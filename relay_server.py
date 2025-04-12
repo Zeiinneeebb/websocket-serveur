@@ -1,28 +1,24 @@
-import asyncio
-import websockets
+from fastapi import FastAPI, WebSocket
+import uvicorn
 
-PORT = 7890
+app = FastAPI()
+clients = []
 
-clients = set()
-
-async def echo(websocket):
-    clients.add(websocket)
-    print("Client connected")
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    clients.append(websocket)
+    print("Client connecté !")
     try:
-        async for message in websocket:
-            print("Received:", message)
+        while True:
+            data = await websocket.receive_text()
+            print("Reçu :", data)
             for client in clients:
                 if client != websocket:
-                    await client.send(message)
-    except websockets.exceptions.ConnectionClosed:
-        print("Client disconnected")
-    finally:
+                    await client.send_text(data)
+    except:
+        print("Client déconnecté")
         clients.remove(websocket)
 
-async def main():
-    async with websockets.serve(echo, "0.0.0.0", PORT):
-        print(f"WebSocket server started on port {PORT}")
-        await asyncio.Future()  # run forever
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    uvicorn.run("relay_server:app", host="0.0.0.0", port=10000)
